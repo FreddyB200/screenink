@@ -1,0 +1,7 @@
+ScreenInk
+ScreenInk.build
+ScreenInk.check
+.DS_Store
+.claude/
+# Personal backlog pointer (mentions a private vault path); keep out of the public repo
+IDEAS.md
