@@ -60,6 +60,7 @@ final class Pomodoro {
     var flashUntil: CFTimeInterval = 0
     var visible = true
     var compact = false
+    var musicMuted = false            // silencia la música de foco solo durante esta sesión de la app (no se guarda)
 
     func duration(_ p: Phase) -> TimeInterval {
         switch p { case .focus: return Double(focusMin) * 60; case .short: return Double(shortMin) * 60; case .long: return Double(longMin) * 60 }
@@ -72,9 +73,13 @@ final class Pomodoro {
     func toggle() {
         if running { remaining = left; running = false }
         else { endDate = Date(timeIntervalSinceNow: remaining); running = true }
-        save()
+        save(); syncMusic()
     }
-    func reset() { logInterrupted(); running = false; remaining = duration(phase); save() }
+    func reset() {
+        logInterrupted()
+        if phase == .focus { FocusMusic.shared.focusDidEnd() }
+        running = false; remaining = duration(phase); save(); syncMusic()
+    }
     func skip() { logInterrupted(); advance(counted: false, autoRun: false) }
 
     /// Si se corta un foco con al menos 1 min avanzado, queda registrado como interrumpido.
@@ -95,7 +100,13 @@ final class Pomodoro {
         }
     }
 
+    /// La música suena solo con el pomodoro corriendo, en fase de foco y sin silenciar; FocusMusic aplica los fundidos.
+    func syncMusic() {
+        FocusMusic.shared.update(shouldPlay: running && phase == .focus && !musicMuted)
+    }
+
     private func advance(counted: Bool, autoRun: Bool) {
+        if phase == .focus { FocusMusic.shared.focusDidEnd() }
         switch phase {
         case .focus:
             if counted { completed += 1 }
@@ -106,7 +117,7 @@ final class Pomodoro {
         remaining = duration(phase)
         running = autoRun
         if autoRun { endDate = Date(timeIntervalSinceNow: remaining) }
-        save()
+        save(); syncMusic()
     }
 
     // MARK: Persistencia
@@ -142,6 +153,7 @@ final class Pomodoro {
             endDate = end; running = true
             if end.timeIntervalSinceNow <= 0 { tick() }
         }
+        syncMusic()
     }
 }
 
@@ -162,11 +174,14 @@ final class PomoView: NSView {
 
     static func size(compact: Bool) -> NSSize { compact ? NSSize(width: 150, height: 58) : NSSize(width: 250, height: 132) }
 
-    enum Btn { case toggle, skip, reset, shrink, settings, stats }
+    enum Btn { case toggle, skip, reset, music, shrink, settings, stats }
     func buttons() -> [(Btn, NSRect)] {
         guard !p.compact else { return [] }
-        let items: [Btn] = [.toggle, .skip, .reset, .stats, .settings, .shrink]
-        let b: CGFloat = 32, gap: CGFloat = 6
+        var items: [Btn] = [.toggle, .skip, .reset, .stats, .settings, .shrink]
+        // Con la música de foco activada entra un séptimo botón; se estrechan para que la fila siga cabiendo.
+        let hasMusic = FocusMusic.shared.enabled
+        if hasMusic { items.insert(.music, at: 3) }
+        let b: CGFloat = hasMusic ? 28 : 32, gap: CGFloat = hasMusic ? 4 : 6
         let w = CGFloat(items.count) * b + CGFloat(items.count - 1) * gap
         var x = bounds.midX - w / 2
         return items.map { i in defer { x += b + gap }; return (i, NSRect(x: x, y: 12, width: b, height: b)) }
@@ -180,6 +195,7 @@ final class PomoView: NSView {
             case .toggle: p.toggle()
             case .skip: p.skip()
             case .reset: p.reset()
+            case .music: p.musicMuted.toggle(); p.syncMusic()
             case .settings: onSettings()
             case .stats: onStats()
             case .shrink: setCompact(true)
@@ -291,6 +307,20 @@ final class PomoView: NSView {
             case .toggle: symbol(p.running ? "pause.fill" : "play.fill", fallback: p.running ? "⏸" : "▶", in: r)
             case .skip: symbol("forward.end.fill", fallback: "⏭", in: r)
             case .reset: symbol("arrow.counterclockwise", fallback: "↺", in: r)
+            case .music:
+                if p.musicMuted {
+                    // Silenciada en esta sesión: nota atenuada y tachada
+                    NSGraphicsContext.current?.cgContext.setAlpha(0.4)
+                    symbol("music.note", fallback: "♪", in: r, size: 14)
+                    NSGraphicsContext.current?.cgContext.setAlpha(1)
+                    NSColor(white: 1, alpha: 0.8).setStroke()
+                    let l = NSBezierPath(); l.lineWidth = 1.8; l.lineCapStyle = .round
+                    l.move(to: NSPoint(x: r.minX + 7, y: r.maxY - 7)); l.line(to: NSPoint(x: r.maxX - 7, y: r.minY + 7)); l.stroke()
+                } else {
+                    col.withAlphaComponent(0.35).setFill()
+                    NSBezierPath(roundedRect: r, xRadius: 9, yRadius: 9).fill()
+                    symbol("music.note", fallback: "♪", in: r, size: 14)
+                }
             case .settings: symbol("gearshape.fill", fallback: "⚙", in: r)
             case .stats: symbol("chart.bar.fill", fallback: "▥", in: r)
             case .shrink: symbol("arrow.down.right.and.arrow.up.left", fallback: "–", in: r, size: 13)

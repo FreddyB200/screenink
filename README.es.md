@@ -25,6 +25,15 @@ Cuando hago directos o doy clase necesito señalar, rodear cosas y que las marca
 - **Indicador de micrófono** en la barra de menús (CoreAudio): verde = volumen de entrada mayor que cero, rojo = silenciado (volumen 0), blanco = sin dispositivo de entrada.
 - **Arranque al iniciar sesión** mediante un LaunchAgent que instala `install.sh`.
 
+## Música de foco
+
+El pomodoro puede reproducir un archivo de audio mientras corre una fase de **foco**. Solo archivos locales (mp3, m4a, aac, wav, aiff); no se descarga ni se transmite nada. Usa audio que tengas derecho a usar.
+
+- Se configura en **Ajustes del pomodoro…** (menú de la barra), sección "Música de foco": activarla, elegir el archivo, el volumen y qué pasa en el siguiente foco ("Continuar donde quedó" o "Empezar desde el inicio"). El elemento de menú **Música de foco** la activa y desactiva rápido.
+- Suena solo con el pomodoro corriendo en fase de foco, se repite si el archivo es más corto que la sesión, entra con un fundido de 3 s y sale con otro de 3 s al pausar, saltar, reiniciar o terminar el foco. Los descansos van en silencio.
+- Con la música activada, la tarjeta expandida muestra un botón de nota que la silencia o la reactiva hasta que se reinicie la app.
+- Si el archivo no existe o no se puede leer, la música se desactiva y el diálogo de ajustes explica el motivo.
+
 ## Atajos de teclado
 
 ### Atajos globales (funcionan en cualquier app)

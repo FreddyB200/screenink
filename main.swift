@@ -536,7 +536,7 @@ final class OverlayWindow: NSWindow {
 
 // MARK: - App
 
-final class App: NSObject, NSApplicationDelegate {
+final class App: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     let m = Model.shared
     var windows: [(OverlayWindow, InkView)] = []
     var timer: Timer?
@@ -556,7 +556,7 @@ final class App: NSObject, NSApplicationDelegate {
     var pomoShowItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ n: Notification) {
-        m.load(); pomo.load()
+        m.load(); FocusMusic.shared.load(); pomo.load()
         buildWindows()
         (pomoPanel, pomoView) = makePomoPanel(
             onSettings: { [weak self] in self?.openPomoSettings() },
@@ -676,6 +676,7 @@ final class App: NSObject, NSApplicationDelegate {
         _ = add("Saltar fase  (⌃⌥N)", #selector(pomoSkip))
         _ = add("Tema de la sesión…", #selector(editPomoTag))
         _ = add("Estadísticas del pomodoro…", #selector(openStats))
+        _ = add("Música de foco", #selector(toggleMusic))
         _ = add("Ajustes del pomodoro…", #selector(openPomoSettings))
         menu.addItem(.separator())
         menu.addItem(withTitle: "Salir", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -714,6 +715,23 @@ final class App: NSObject, NSApplicationDelegate {
     @objc func pomoToggle() { pomo.toggle(); pomoView.needsDisplay = true }
     @objc func pomoSkip() { pomo.skip(); pomoView.needsDisplay = true }
 
+    @objc func toggleMusic() {
+        let fm = FocusMusic.shared
+        if fm.enabled { fm.enabled = false; fm.save() }
+        else {
+            fm.revalidate()
+            // Sin archivo válido no se puede activar: abre los ajustes, donde se explica el motivo.
+            if fm.path.isEmpty || fm.lastError != nil { openPomoSettings(); return }
+            fm.enabled = true; fm.save()
+        }
+        pomo.syncMusic(); pomoView.needsDisplay = true
+    }
+
+    func validateMenuItem(_ item: NSMenuItem) -> Bool {
+        if item.action == #selector(toggleMusic) { item.state = FocusMusic.shared.enabled ? .on : .off }
+        return true
+    }
+
     @objc func openStats() { StatsWindow.shared.show() }
 
     @objc func editPomoTag() {
@@ -744,9 +762,11 @@ final class App: NSObject, NSApplicationDelegate {
             let s = NSStackView(views: [l, f]); s.distribution = .equalSpacing; s.widthAnchor.constraint(equalToConstant: 300).isActive = true
             return s
         } + [auto]
-        let stack = NSStackView(views: rows)
+        let music = FocusMusicSettings()
+        let sep = NSBox(); sep.boxType = .separator; sep.widthAnchor.constraint(equalToConstant: 300).isActive = true
+        let stack = NSStackView(views: rows + [sep, music.view])
         stack.orientation = .vertical; stack.alignment = .leading; stack.spacing = 8
-        stack.frame = NSRect(x: 0, y: 0, width: 300, height: 140)
+        stack.frame = NSRect(x: 0, y: 0, width: 300, height: stack.fittingSize.height)
         let alert = NSAlert()
         alert.messageText = "Ajustes del pomodoro"
         alert.accessoryView = stack
@@ -757,8 +777,9 @@ final class App: NSObject, NSApplicationDelegate {
         pomo.focusMin = val(fields[0], 25); pomo.shortMin = val(fields[1], 5)
         pomo.longMin = val(fields[2], 15); pomo.cycle = val(fields[3], 4)
         pomo.autoStart = auto.state == .on
+        music.apply()
         if !pomo.running { pomo.remaining = pomo.duration(pomo.phase) }
-        pomo.save(); pomoView.needsDisplay = true
+        pomo.save(); pomo.syncMusic(); pomoView.needsDisplay = true
     }
 
     func openColorPanel() {

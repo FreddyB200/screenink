@@ -25,6 +25,15 @@ When I stream or teach, I need to point at things, circle them and let the marks
 - **Microphone indicator** in the menu bar (CoreAudio): green = input volume above zero, red = muted (volume 0), white = no input device.
 - **Launch at login** through a LaunchAgent installed by `install.sh`.
 
+## Focus music
+
+The pomodoro can play an audio file while a **focus** phase is running. Local files only (mp3, m4a, aac, wav, aiff); nothing is downloaded or streamed. Use audio you have the right to use.
+
+- Configure it in the menu bar item **Ajustes del pomodoro…**, section "Música de foco": enable it, choose the file, set the volume and pick what happens at the next focus ("Continuar donde quedó" or "Empezar desde el inicio"). The menu item **Música de foco** toggles it quickly.
+- It plays only while the pomodoro is running in a focus phase, loops if the file is shorter than the session, fades in over 3 s and fades out over 3 s on pause, skip, reset or end of focus. Breaks are silent.
+- With music enabled, the expanded card shows a note button that mutes or unmutes the music until the app restarts.
+- If the file is missing or unreadable, music is disabled and the settings dialog says why.
+
 ## Keyboard shortcuts
 
 ### Global hotkeys (work in any app)
